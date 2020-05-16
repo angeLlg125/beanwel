@@ -1,2 +1,0 @@
-# beanwel
-Bejewels game

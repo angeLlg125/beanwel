@@ -6,8 +6,6 @@
 package utils;
 
 import forms.Canvas;
-
-import java.awt.Color;
 import java.awt.Graphics;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -25,8 +23,7 @@ public class Bean implements Runnable{
 
     private int x = 0;
     private int y = 0;
-    private int distance = 0;
-    public int timesToAnimate = 0;
+    public int timesToMoveDown = 0;
     
     private String animationName;
     private Canvas canvasReference;
@@ -46,6 +43,7 @@ public class Bean implements Runnable{
         this.imageName = state + "_" + colorId;
         this.isThreadActive = false;
         this.isImageSelected = false;
+        this.isReadyToExplode = false;
         this.isVisible = true;
         this.remove = false;
         this.isFalling = false;
@@ -66,47 +64,48 @@ public class Bean implements Runnable{
     	}
     }
     
-    public synchronized void startAnimation(String animationName, Canvas canvas, int timesToAnimate){
+    public synchronized void startAnimation(String animationName, Canvas canvas){
         this.canvasReference = canvas;
-        this.animationName = animationName;        
-        this.timesToAnimate = timesToAnimate;
+        this.animationName = animationName;
 
-        this.setIsThreadActive(true);
         new Thread(this).start();	
     }
     
-    public synchronized void startAnimation(String animationName, Canvas canvas, int timesToAnimate, int distance){
-        this.canvasReference = canvas;
-        this.animationName = animationName;        
-        this.timesToAnimate = timesToAnimate;
-        this.distance = distance;
-
-        this.setIsThreadActive(true);
-        new Thread(this).start();	
-    }
 
     @Override
     public void run() {
-        this.setIsImageSelected(false);
+
+    	this.setIsThreadActive(true);
+
         switch(this.animationName){
             case "explosion":
             	ResourceManager.playSound("bubble.wav");
-            	while(this.timesToAnimate > 0) {
-	                for (int i = 1; i <= 5; i++) {
-	                    this.imageName = this.animationName + this.colorId + i;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(120);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-            		this.timesToAnimate--;
+                for (int i = 1; i <= 5; i++) {
+                    this.imageName = this.animationName + this.colorId + i;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(120);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
         		}
                 this.setIsVisible(false);
                 break;
+            case "shine":
+            		String temp = this.imageName;
+                    this.imageName = "shadow";
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(30);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    this.imageName = temp;
+                    this.canvasReference.repaint();
+        		this.timesToMoveDown--;
+                break;
             case "downWhenExplosion":
-            	while(this.timesToAnimate > 0) {
+            	while(this.timesToMoveDown > 0) {
 	                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
 	                    this.y += 1;
 	                    this.canvasReference.repaint();
@@ -116,206 +115,137 @@ public class Bean implements Runnable{
 	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
 	                    }
 	                }
-	        		this.timesToAnimate--;
+	        		this.timesToMoveDown--;
 	    		}
-                /*for(int i = 0; i < 30; i++){
-                    this.y -= 1;
-                    this.canvasReference.repaint();
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(1);
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(Image.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-                
-                for(int i = 0; i < 30; i++){
-                    this.y += 1;
-                    this.canvasReference.repaint();
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(1);
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(Image.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-                
-                for(int i = 0; i < 10; i++){
-                    this.y -= 1;
-                    this.canvasReference.repaint();
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(1);
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(Image.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-                
-                for(int i = 0; i < 10; i++){
-                    this.y += 1;
-                    this.canvasReference.repaint();
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(1);
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(Image.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }*/
                 
                 break;
             case "top":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i< Constants.BEAN_HEIGHT + Constants.MARGING; i++){
-	                    this.y -= 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	                this.timesToAnimate--;
-    			}
-                
+                for(int i = 0; i< Constants.BEAN_HEIGHT + Constants.MARGING; i++){
+                    this.y -= 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
             case "down":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
-	                    this.y += 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	        		this.timesToAnimate--;
-	    		}
-                
+                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
+                    this.y += 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
             case "right":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
-	                    this.x += 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	        		this.timesToAnimate--;
-	    		}
-                
+                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
+                    this.x += 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
             case "left":
-            	while(this.timesToAnimate > 0) {            	
-	                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
-	                    this.x -= 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	        		this.timesToAnimate--;
-	    		}
+                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
+                    this.x -= 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
             case "topreturn":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i< Constants.BEAN_HEIGHT + Constants.MARGING; i++){
-	                    this.y -= 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
-	                    this.y += 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	                this.timesToAnimate--;
-    			}
+                for(int i = 0; i< Constants.BEAN_HEIGHT + Constants.MARGING; i++){
+                    this.y -= 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
+                    this.y += 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 
                 break;
             case "downreturn":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
-	                    this.y += 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	                for(int i = 0; i< Constants.BEAN_HEIGHT + Constants.MARGING; i++){
-	                    this.y -= 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	        		this.timesToAnimate--;
-	    		}
-                
+                for(int i = 0; i < Constants.BEAN_HEIGHT + Constants.MARGING; i++){
+                    this.y += 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                for(int i = 0; i< Constants.BEAN_HEIGHT + Constants.MARGING; i++){
+                    this.y -= 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
             case "rightreturn":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
-	                    this.x += 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
-	                    this.x -= 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	        		this.timesToAnimate--;
-	    		}
+                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
+                    this.x += 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
+                    this.x -= 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
             case "leftreturn":
-            	while(this.timesToAnimate > 0) {
-	                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
-	                    this.x -= 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
-	                    this.x += 1;
-	                    this.canvasReference.repaint();
-	                    try {
-	                        TimeUnit.MILLISECONDS.sleep(2);
-	                    } catch (InterruptedException ex) {
-	                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
-	                    }
-	                }
-	        		this.timesToAnimate--;
-	    		}
+                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
+                    this.x -= 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                for(int i = 0; i < Constants.BEAN_WIDTH + Constants.MARGING; i++){
+                    this.x += 1;
+                    this.canvasReference.repaint();
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(2);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 break;
         }
         this.imageName = state + "_" + colorId;
-        this.timesToAnimate = 1;
-        this.distance = 0;
         this.setIsThreadActive(false);
         canvasReference.repaint();
     }
@@ -326,6 +256,7 @@ public class Bean implements Runnable{
 
     public void setColorId(String colorId) {
         this.colorId = colorId;
+        this.imageName = this.state + "_" + colorId;
     }
 
     public String getState() {
@@ -392,12 +323,12 @@ public class Bean implements Runnable{
     	this.isVisible = isVisible;
     }
     
-    public void setTimesToAnimate(int times) {
-    	this.timesToAnimate = times;
+    public void setTimesToMoveDown(int times) {
+    	this.timesToMoveDown += times;
     }
     
-    public int getTimesToAnimate() {
-    	return timesToAnimate;
+    public int getTimesToMoveDown() {
+    	return timesToMoveDown;
     }
     
     public void remove() {

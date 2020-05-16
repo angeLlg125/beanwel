@@ -11,6 +11,10 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import utils.Constants;
 import utils.Bean;
 
@@ -20,9 +24,8 @@ import utils.Bean;
  */
 public class MainBoard implements Runnable{
     public Bean[][] images;
-    private LinkedList<Bean> imagesUnderAnimation = new LinkedList<>();
+    int [] underAnimation = new int[Constants.ARRAY_SIZE_Y];
 
-    private Bean selectedImage;
     private boolean validationActive = false;
     private int bean_i_dragg = -1;
     private int bean_j_dragg = -1;
@@ -37,38 +40,37 @@ public class MainBoard implements Runnable{
     }
     
     public void initImages(){
-       /*for (int i = 0; i < images.length; i++) {
-           for (int j = 0; j < images[0].length; j++) {
-               x = Constants.BOARD_X + (i * Constants.BEAN_WIDTH) + Constants.MARGING * (i+1);
-               y = Constants.BOARD_Y + (j * Constants.BEAN_HEIGHT) + Constants.MARGING * (j+1);
-               images[i][j] = this.getRandomBean(x, y);
-           }
-       }*/
         int count = 0;
         String leftColorId = "";
 
         for (int i = 0; i < images.length; i++) {
-            for (int j = 0; j < images[0].length; j++) {
+            for (int j = 0; j < images[i].length; j++) {
             	images[i][j] = this.getBeanWithNoDuplicades(leftColorId, i, j, count);
-            	
             	if(images[i][j].getColorId() != leftColorId) {
             		leftColorId = images[i][j].getColorId(); 
             		count = 1;
             	}else {
             		count +=1;
             	}
+            	// Initialize rows under animation in -1
+            	if(i == 0) {
+            		this.underAnimation[j] = -1;
+            	}
             }
             leftColorId = "";
             count = 0;
-        }        
+        }
+
+        this.canvasReference.repaint();
     }
     
     private Bean getBeanWithNoDuplicades(String leftItem, int i, int j, int count) {
-        int x = Constants.BOARD_X + (i * Constants.BEAN_WIDTH) + Constants.MARGING * (i+1);
-        int y = Constants.BOARD_Y + (j * Constants.BEAN_HEIGHT) + Constants.MARGING * (j+1);
+    	// Calculate bean position
+        int y = Constants.BOARD_X + (i * Constants.BEAN_WIDTH) + Constants.MARGING * (i+1);
+        int x = Constants.BOARD_Y + (j * Constants.BEAN_HEIGHT) + Constants.MARGING * (j+1);
     	String valuesToSkipp = "";
     	
-    	if(i - 2 > 0) {
+    	if(i - 2 >= 0) {
     		if(images[i-1][j].getColorId() == images[i - 2][j].getColorId()) {
     			valuesToSkipp = images[i - 1][j].getColorId();
     		}
@@ -80,7 +82,7 @@ public class MainBoard implements Runnable{
     	
     	return new Bean(x, y, getRandomImage(valuesToSkipp));
     }
-    
+
     private String getRandomImage(String ignore) {
     	Random rand = new Random();
     	String result = null;
@@ -141,11 +143,11 @@ public class MainBoard implements Runnable{
     	// Background
         g.drawImage(Constants.getImage("bkg1"), 0, 0, 800, 800, canvas);
         
-        // Draw rectangules
+        // Draw rectangles
         for (int i = 0; i < images.length; i++) {
             for (int j = 0; j < images[0].length; j++) {
-                x = Constants.BOARD_X + (i * Constants.BEAN_WIDTH) + Constants.MARGING * (i+1);
-                y = Constants.BOARD_Y + (j * Constants.BEAN_HEIGHT) + Constants.MARGING * (j+1);
+                y = Constants.BOARD_X + (i * Constants.BEAN_WIDTH) + Constants.MARGING * (i+1);
+                x = Constants.BOARD_Y + (j * Constants.BEAN_HEIGHT) + Constants.MARGING * (j+1);
             	if(images[i][j] != null) {
             		if(count%2==0) {
                         g.setColor(new Color(168, 173, 181, 80));
@@ -161,10 +163,11 @@ public class MainBoard implements Runnable{
             	if(images[i][j].isImageSelected()) {
                     g.setColor(new Color(168, 173, 181, 180));
                     g.fillRect(x, y, Constants.BEAN_WIDTH, Constants.BEAN_HEIGHT);
-            	}
+            	} 
             }
             count++;
         }
+        // Draw images
         for (int i = 0; i < images.length; i++) {
             for (int j = 0; j < images[0].length; j++) {
             	if(images[i][j] != null) {
@@ -174,304 +177,235 @@ public class MainBoard implements Runnable{
         }
     }
     
+    // When user release the click button, then will be able to drag another bean
     public void releaseClickMouseLogic(int x, int y){
-        /*if (this.isAnimationInProgress()) {
-            return;
-        }
-        this.validationActive = false;
-
-        for (int i = 0; i < images.length; i++) {
-            for (int j = 0; j < images[0].length; j++) {
-            	images[i][j].setIsImageSelected(false);
-                if(!images[i][j].isThreadActive() && checkIfMouseInsideRankCoordinates(x, y, images[i][j].getX(), images[i][j].getY())){
-                    if(images[i][j].isImageSelected() != true 
-                    		&& !images[i][j].isThreadActive()
-                    		&& !images[i][j].isReadyToRemove()
-                    		&& !images[i][j].isReadyToExplode()) {// && this.selectedImage == null){
-                        //images[i][j].startAnimation("explosion", canvasReference, 1);
-                        //ResourceManager.playSound("bubble.wav");
-                        //images[i][j].setIsImageSelected(true);
-                        ////this.selectedImage = images[i][j];
-                        canvasReference.repaint();
-                    }/*else{
-                        if (this.selectedImage.equals(images[i][j])) {
-                        	 images[i][j].setIsImageSelected(false);
-                            this.selectedImage = null;
-                            this.canvasReference.repaint();
-                        }else {
-                        	images[i][j].setIsImageSelected(false);
-                        	this.validateSwapDirection(this.selectedImage.getX()+1, this.selectedImage.getY()+1, i, j);
-                            this.selectedImage = null;
-                            this.canvasReference.repaint();
-                        }
-                    }/*
-                   return;
-                }
-            }
-        }*/
-    }
-    
-    public void releaseMouseLogic(int x, int y){
     	this.validationActive = false;
     }
     
+    // When user is dragging and release the click button, then reset the selected i, j of the bean
+    public void releaseMouseLogic(int x, int y){
+    	this.validationActive = false;
+    	this.bean_i_dragg = -1;
+    	this.bean_j_dragg = -1;
+    }
+    
     public void draggMouseLogic(int x, int y){
-        if (this.validationActive || isAnimationInProgress()) {
+        if (this.validationActive) {
             return;
         }
         
-        if (this.selectedImage != null) {
-            this.selectedImage.setIsImageSelected(false);
-        }
+        // Calculate the i, j of the selected bean 
+		int temp_i_dragg =  (y - Constants.BOARD_X - Constants.MARGING )/(Constants.BEAN_WIDTH+Constants.MARGING);
+		int temp_j_dragg = (x - Constants.BOARD_Y- Constants.MARGING )/(Constants.BEAN_HEIGHT+Constants.MARGING);
 
         if(bean_i_dragg == -1 && bean_j_dragg == -1) {
-	        for (int i = 0; i < images.length; i++) {
-	            for (int j = 0; j < images[0].length; j++) {
-	            	if(!images[i][j].isThreadActive()
-	                        && checkIfMouseInsideRankCoordinates(x, y, images[i][j].getX(), images[i][j].getY())){
-
-                            this.bean_i_dragg = i;
-                            this.bean_j_dragg = j;
-                        break;
-	                }
-	            }
-	        }
+        	// When there is no a selected bean, select current bean 
+            this.bean_i_dragg = temp_i_dragg;
+            this.bean_j_dragg = temp_j_dragg;
         }else {
-            this.validateSwapDirection(x, y, this.bean_i_dragg, this.bean_j_dragg);
+        	// Validate if the positions i, j are different from the new ones, also validate if you are dragging outside the matrix
+        	if(temp_i_dragg == this.bean_i_dragg && temp_j_dragg == this.bean_j_dragg 
+        			|| temp_i_dragg >= this.images.length || temp_i_dragg < 0
+        			|| temp_j_dragg >= this.images[0].length || temp_j_dragg < 0) {
+        				// DO Nothing in this scenarios
+        		
+        	}else {
+        		this.validateSwapDirection(temp_i_dragg, temp_j_dragg, this.bean_i_dragg, this.bean_j_dragg);
+        	}
         }
     }
     
-    private void validateSwapDirection(int x, int y, int image_i, int image_j){
-        if(x < images[image_i][image_j].getX()) {
+    private void validateSwapDirection(int new_i, int new_j, int image_i, int image_j){
+    	// Validate if the animation of selected beans is active
+    	// Validate the min distance between two beans, is 1, more means they are not one next to the other
+    	if(this.images[new_i][new_j].isThreadActive() 
+    		|| this.images[image_i][image_j].isThreadActive()
+    		|| Math.abs(new_i - image_i) > 1 || Math.abs(new_j - image_j) > 1){
+    		return;
+    		
+    	// Verify the direction where the bean will be moved
+    	}else if(new_j < image_j) {
+        	// Left
+            this.validationActive = true;
+        	this.performSwap("left", "right",  image_i, image_j, image_i, new_j);
 
-            if(image_i - 1 >= 0) {
-            	if(!images[image_i - 1][image_j].getColorId().equals(images[image_i][image_j].getColorId())) {
-            
-                    //System.out.println("Left");
-            		this.validationActive = true;
-                    // TODO: VALIDATIONS
-            		this.swap(image_i -1, image_j, image_i, image_j);
-                    
-                    if(searchAlgorithm(this.images, image_i, image_j) | searchAlgorithm(this.images, image_i-1, image_j)) {
-                    	
-                        images[image_i - 1][image_j].startAnimation("left", this.canvasReference, 1);
-                        images[image_i][image_j].startAnimation("right", this.canvasReference, 1);
+        }else if(new_j > image_j){
+        	// Right
+            this.validationActive = true;
+        	this.performSwap("right", "left",image_i, image_j, image_i, new_j);
 
-                        imagesUnderAnimation.add(images[image_i - 1][image_j]);
-                        imagesUnderAnimation.add(images[image_i][image_j]);
-                        new Thread(this).start();
-                    }else {
-                    	this.swap(image_i -1, image_j, image_i, image_j);
-                        images[image_i][image_j].startAnimation("leftreturn", this.canvasReference, 1);
-                        images[image_i-1][image_j].startAnimation("rightreturn", this.canvasReference, 1);
-                        imagesUnderAnimation.add(images[image_i - 1][image_j]);
-                        imagesUnderAnimation.add(images[image_i][image_j]);
-                    }
+        }else if(new_i < image_i){
+        	// Top
+            this.validationActive = true;
+        	this.performSwap("top", "down",image_i, image_j, new_i, image_j);
+        	
+        }else if(new_i > image_i){
+        	// Down
+            this.validationActive = true;
+        	this.performSwap("down", "top", image_i, image_j, new_i, image_j);
+        	
+        }
+    }
+    
+    private void performSwap(
+    		String firstAnimation, 
+    		String seccondAnimation,
+    		int first_i, int first_j, int seccond_i, int seccond_j) {
 
-                    this.bean_i_dragg = -1;
-                    this.bean_j_dragg = -1;
-            	}else {
-                    images[image_i][image_j].startAnimation("leftreturn", this.canvasReference, 1);
-                    images[image_i-1][image_j].startAnimation("rightreturn", this.canvasReference, 1);
-                    imagesUnderAnimation.add(images[image_i - 1][image_j]);
-                    imagesUnderAnimation.add(images[image_i][image_j]);
+    	// If the selected bean and the new one has different color verify swap
+    	if(!images[first_i][first_j].getColorId().equals(images[seccond_i][seccond_j].getColorId())) {
+
+    			// Swap selected bean and new bean
+    		    this.swap(first_i, first_j, seccond_i, seccond_j);
+    		    
+    		    // Search if there is a coincidence on the beans, if true then those beans will be exploded
+                if(searchAlgorithm(this.images, first_i, first_j) | searchAlgorithm(this.images, seccond_i, seccond_j)) {
+                    images[first_i][first_j].startAnimation(seccondAnimation, this.canvasReference);
+                    images[seccond_i][seccond_j].startAnimation(firstAnimation, this.canvasReference);
+                
+                // if there is not a coincidence, only do a swap return animation
+                }else {
+                	this.swap(first_i, first_j, seccond_i, seccond_j);
+                    images[first_i][first_j].startAnimation(firstAnimation+"return", this.canvasReference);
+                    images[seccond_i][seccond_j].startAnimation(seccondAnimation+"return", this.canvasReference);
+                    //imagesUnderAnimation.add(images[first_i][first_j]);
+                    //imagesUnderAnimation.add(images[seccond_i][seccond_j]);
                 }
-            }
-        	this.bean_i_dragg = -1;
-        	this.bean_j_dragg = -1;
-        }else if(x > images[image_i][image_j].getX() + Constants.BEAN_WIDTH){
-            if(image_i + 1 < images.length) {
-            	if(!images[image_i][image_j].getColorId().equals(images[image_i + 1][image_j].getColorId())) {
-	                    //System.out.println("Right");
-	            		this.validationActive = true;
-	                    // TODO: VALIDATIONS
-	            		this.swap(image_i + 1, image_j, image_i, image_j);
-	                    
-	                    if(searchAlgorithm(this.images, image_i, image_j) | searchAlgorithm(this.images, image_i + 1, image_j)) {
-		                    images[image_i + 1][image_j].startAnimation("right", this.canvasReference, 1);
-		                    images[image_i][image_j].startAnimation("left", this.canvasReference, 1);
-		                    imagesUnderAnimation.add(images[image_i + 1][image_j]);
-		                    imagesUnderAnimation.add(images[image_i][image_j]);
-		                    new Thread(this).start();
-	                    }else {
-	                    	this.swap(image_i + 1, image_j, image_i, image_j);
-	    	                images[image_i+1][image_j].startAnimation("leftreturn", this.canvasReference, 1);
-	    	                images[image_i][image_j].startAnimation("rightreturn", this.canvasReference, 1);
-	    	                imagesUnderAnimation.add(images[image_i + 1][image_j]);
-	    	                imagesUnderAnimation.add(images[image_i][image_j]);
-	                    }
-	
-	                    this.bean_i_dragg = -1;
-	                    this.bean_j_dragg = -1;
-	            }else {
-	                images[image_i+1][image_j].startAnimation("leftreturn", this.canvasReference, 1);
-	                images[image_i][image_j].startAnimation("rightreturn", this.canvasReference, 1);
-	                imagesUnderAnimation.add(images[image_i + 1][image_j]);
-	                imagesUnderAnimation.add(images[image_i][image_j]);
-	            }
-            }
-        	this.bean_i_dragg = -1;
-        	this.bean_j_dragg = -1;
-        }else if(y < images[image_i][image_j].getY()){
-            if(image_j - 1 >= 0) {
-            	if(!images[image_i][image_j].getColorId().equals(images[image_i][image_j - 1].getColorId())) {
-                    //System.err.println("Top");
-	            		this.validationActive = true;
-
-	            		this.swap(image_i, image_j, image_i, image_j - 1);
-	                    
-	                    if(searchAlgorithm(this.images, image_i, image_j) | searchAlgorithm(this.images, image_i, image_j - 1)) {
-		                    images[image_i][image_j].startAnimation("down", this.canvasReference, 1);
-		                    images[image_i][image_j - 1].startAnimation("top", this.canvasReference, 1);
-		                    imagesUnderAnimation.add(images[image_i][image_j]);
-		                    imagesUnderAnimation.add(images[image_i][image_j - 1]);
-		                    new Thread(this).start();
-		                    // TODO: VALIDATIONS
-	                    }else {
-	    	                images[image_i][image_j].startAnimation("downreturn", this.canvasReference, 1);
-	    	                images[image_i][image_j-1].startAnimation("topreturn", this.canvasReference, 1);
-	    	                imagesUnderAnimation.add(images[image_i][image_j]);
-	    	                imagesUnderAnimation.add(images[image_i][image_j - 1]);
-	    	                this.swap(image_i, image_j, image_i, image_j - 1);
-	                    }
-	
-	                    this.bean_i_dragg = -1;
-	                    this.bean_j_dragg = -1;
-	            }else {
-	                images[image_i][image_j].startAnimation("topreturn", this.canvasReference, 1);
-	                images[image_i][image_j-1].startAnimation("downreturn", this.canvasReference, 1);
-	                imagesUnderAnimation.add(images[image_i][image_j]);
-	                imagesUnderAnimation.add(images[image_i][image_j - 1]);
-	            }
-            }	
-        	this.bean_i_dragg = -1;
-        	this.bean_j_dragg = -1;
-        }else if(y > images[image_i][image_j].getY() + Constants.BEAN_HEIGHT){
-            if(image_j + 1 < images[0].length) {
-            	if(!images[image_i][image_j].getColorId().equals(images[image_i][image_j + 1].getColorId())) {
-                    //System.out.println("Down");
-
-            		this.validationActive = true;
-                    
-            		this.swap(image_i, image_j, image_i, image_j + 1);
-                    
-                    if(searchAlgorithm(this.images, image_i, image_j) | searchAlgorithm(this.images, image_i, image_j + 1)) {
-                        images[image_i][image_j].startAnimation("top", this.canvasReference, 1);
-                        images[image_i][image_j + 1].startAnimation("down", this.canvasReference, 1);
-                        imagesUnderAnimation.add(images[image_i][image_j]);
-                        imagesUnderAnimation.add(images[image_i][image_j + 1]);
-                        new Thread(this).start();
-
-                    }else {
-                    	this.swap(image_i, image_j, image_i, image_j + 1);
-    	                images[image_i][image_j].startAnimation("downreturn", this.canvasReference, 1);
-    	                images[image_i][image_j+1].startAnimation("topreturn", this.canvasReference, 1);
-    	                imagesUnderAnimation.add(images[image_i][image_j]);
-    	                imagesUnderAnimation.add(images[image_i][image_j+1]);
-                    }
-                    this.bean_i_dragg = -1;
-                    this.bean_j_dragg = -1;
-	            }else {
-	                images[image_i][image_j].startAnimation("downreturn", this.canvasReference, 1);
-	                images[image_i][image_j+1].startAnimation("topreturn", this.canvasReference, 1);
-	                imagesUnderAnimation.add(images[image_i][image_j]);
-	                imagesUnderAnimation.add(images[image_i][image_j+1]);
-	            }
-            }
-        	this.bean_i_dragg = -1;
-        	this.bean_j_dragg = -1;
+        // If beans has same color, just do swap return animation
+        }else {
+            images[first_i][first_j].startAnimation(firstAnimation+"return", this.canvasReference);
+            images[seccond_i][seccond_j].startAnimation(seccondAnimation+"return", this.canvasReference);
+            //imagesUnderAnimation.add(images[first_i][first_j]);
+            //imagesUnderAnimation.add(images[seccond_i][seccond_j]);
         }
     }
 
-    // TODO: Validate that beans don´t swap when beansare falling down in a specific column
+    // Swap beans
     public final void swap(int i1, int j1, int i2, int j2){
         Bean temp = images[i1][j1];
+        Bean temp2 = images[i2][j2];
         images[i1][j1] = images[i2][j2];
         images[i2][j2] = temp;
     }
 
+    
     private boolean searchAlgorithm(Bean[][] images, int i, int j) {
     	LinkedList<Bean> tempResultImagesToExplode = new LinkedList<>();
     	boolean explode = false;
-    	// Down
+ 
     	tempResultImagesToExplode.add(images[i][j]);
-    	for (int j2 = j + 1; j2 < images.length; j2++) {
-			if(images[i][j2].getColorId() == images[i][j].getColorId() 
-					&& !images[i][j2].isThreadActive()
-            		&& !images[i][j2].isReadyToRemove()
-            		&& !images[i][j2].isReadyToExplode()) {
-					//&& !images[i][j2].isThreadActive()) {
-				tempResultImagesToExplode.addFirst(images[i][j2]);
-			}else {
-				break;
-			}
-		}
     	
-    	//Top
-    	for (int j2 = j-1; j2 > -1; j2--) {
-			if(images[i][j2].getColorId() == images[i][j].getColorId() 
-					&& !images[i][j2].isThreadActive()
-            		&& !images[i][j2].isReadyToRemove()
-            		&& !images[i][j2].isReadyToExplode()){
-					//&& !images[i][j2].isThreadActive()) {
-				tempResultImagesToExplode.addFirst(images[i][j2]);
+    	int lastIPosition = i;
+    	int count = 1;
+    	
+    	// Top: count coincidences
+    	for (int i2 = i - 1; i2 > -1; i2--) {
+			if(images[i2][j].getColorId() == images[i][j].getColorId()
+					&& !images[i2][j].isThreadActive()
+            		&& !images[i2][j].isReadyToRemove()
+            		&& !images[i2][j].isReadyToExplode()){
+
+				count++;
 			}else {
 				break;
 			}
 		}
-    	if(tempResultImagesToExplode.size() >= Constants.BEANS_TO_MATCH) {
-    		this.setReadyToExplode(tempResultImagesToExplode);
-    		explode = true;
-    	}
-
-    	tempResultImagesToExplode.clear();
-    	tempResultImagesToExplode.add(images[i][j]);
-
-    	//Right
+    	// Down: count coincidences
     	for (int i2 = i + 1; i2 < images.length; i2++) {
 			if(images[i2][j].getColorId() == images[i][j].getColorId() 
 					&& !images[i2][j].isThreadActive()
             		&& !images[i2][j].isReadyToRemove()
             		&& !images[i2][j].isReadyToExplode()) {
-				tempResultImagesToExplode.addFirst(images[i2][j]);
-			}else {
-				break;
-			}
-		}
-    	
-    	// Left
-    	for (int i2 = i -1; i2 > -1; i2--) {
-			if(images[i2][j].getColorId() == images[i][j].getColorId() 
-					&& !images[i2][j].isThreadActive()
-            		&& !images[i2][j].isReadyToRemove()
-            		&& !images[i2][j].isReadyToExplode()) {
-				tempResultImagesToExplode.addFirst(images[i2][j]);
+
+				lastIPosition = i2;
+				count++;
 			}else {
 				break;
 			}
 		}
 
-    	if(tempResultImagesToExplode.size() >= Constants.BEANS_TO_MATCH) {
-    		this.setReadyToExplode(tempResultImagesToExplode);
+    	// If more than three coincidences where found then go to method and explode it
+    	if(count >= Constants.BEANS_TO_MATCH) {
+    		this.setReadyToExplodeVertical(lastIPosition, j, count);
+    		explode = true;
+    	}
+
+    	count = 1;
+    	int lastJPosition = j;
+    	// Right: count coincidences
+    	for (int j2 = j + 1; j2 < images[i].length; j2++) {
+			if(images[i][j2].getColorId() == images[i][j].getColorId() 
+					&& !images[i][j2].isThreadActive()
+            		&& !images[i][j2].isReadyToRemove()
+            		&& !images[i][j2].isReadyToExplode()) {
+				tempResultImagesToExplode.addFirst(images[i][j2]);
+
+				count++;
+			}else {
+				break;
+			}
+		}
+    	
+    	// Left: count coincidences
+    	for (int j2 = j -1; j2 > -1; j2--) {
+			if(images[i][j2].getColorId() == images[i][j].getColorId() 
+					&& !images[i][j2].isThreadActive()
+            		&& !images[i][j2].isReadyToRemove()
+            		&& !images[i][j2].isReadyToExplode()) {
+
+				lastJPosition = j2;
+				count++;
+			}else {
+				break;
+			}
+		}
+
+    	if(count >= Constants.BEANS_TO_MATCH) {
+    		this.setReadyToExplodeHorizontal(i, lastJPosition, count);
     		explode = true;
     	}
 
     	return explode;
     }
     
-    public void setReadyToExplode(LinkedList<Bean> tempResultImagesToExplode) {
-    	for (Bean image : tempResultImagesToExplode) {
-			image.setReadyToExplode(true);
+    public void setReadyToExplodeVertical(int i, int j, int total) {
+		// Update row position under animation
+		if (i > this.underAnimation[j]) {
+			this.underAnimation[j] = i;
 		}
+
+    	while(total > 0) {
+    		this.images[i][j].setReadyToExplode(true);
+    		total--;
+    		i--;
+		}
+    	// This has to be executed on a different class
+    	new Thread(this).start();
+    }
+    
+    // This has to be executed on a different class
+    public void setReadyToExplodeHorizontal(int i, int j, int total) {
+    	while(total > 0) {
+    		// update row position under animation for every column
+    		if (i > this.underAnimation[j]) {
+    			this.underAnimation[j] = i;
+    		}
+
+    		this.images[i][j].setReadyToExplode(true);
+    		total--;
+    		j++;
+		}
+    	
+    	// This has to be done inside the while, is required a thread for every column
+    	new Thread(this).start();
     }
     
     private synchronized void explode() {
 		for (int i = 0; i < images.length; i++) {
 			for (int j = 0; j < images.length; j++) {
 				if(images[i][j] != null && images[i][j].isReadyToExplode()) {
-					images[i][j].setIsThreadActive(true);
-					images[i][j].startAnimation("explosion", this.canvasReference, 1);
-					this.imagesUnderAnimation.add(images[i][j]);
+					images[i][j].startAnimation("explosion", this.canvasReference);
+
 					images[i][j].remove();
 				}
 			}
@@ -479,9 +413,9 @@ public class MainBoard implements Runnable{
     }
     
     private int searchFirstImageToMove(int i, int j) {
-    	for (; j > -1; j--) {
+    	for (; i > -1; i--) {
     		if(!images[i][j].isReadyToExplode()) {
-    			return j;
+    			return i;
     		}
 		}
     	// If this return is reached error while searching not null bean
@@ -494,12 +428,11 @@ public class MainBoard implements Runnable{
     private synchronized void animateColumnForExplodedBeans() {
     	int position = 1;
     	int positionToInjectNewBean = 0;
-    	Bean tempImage;
     	boolean isColumnReviewed = false;
     	boolean columnWillExplode = false;
     	
-		for (int i = 0; i < images.length; i++) {
-			for (int j = images[0].length - 1; j > -1; j--) {
+		for (int j = 0; j < images[0].length; j++) {
+			for (int i = images.length - 1; i > -1; i--) {
 
 				if(!columnWillExplode) {
 					columnWillExplode = images[i][j].isReadyToRemove();
@@ -512,16 +445,18 @@ public class MainBoard implements Runnable{
 					
 					if(positionToInjectNewBean > -1) {
 						// Don´t swap when zero, because it will return tempImage to the same position
-						images[i][j] = images[i][positionToInjectNewBean];
+						images[i][j] = images[positionToInjectNewBean][j];
 						
-						images[i][j].setTimesToAnimate(j-positionToInjectNewBean);
+						images[i][j].setTimesToMoveDown(i-positionToInjectNewBean);
 						images[i][j].setIsFalling(true);
 					}else {
+				        int y = Constants.BOARD_X - (position * Constants.BEAN_WIDTH) + Constants.MARGING * (position+1);
+				        int x = Constants.BOARD_Y + (j * Constants.BEAN_HEIGHT) + Constants.MARGING * (j+1);
 						images[i][j] = this.getRandomBean(
-								Constants.BOARD_X + (i * Constants.BEAN_WIDTH) + Constants.MARGING * (i+1),
-								(Constants.BOARD_Y - (position * Constants.BEAN_HEIGHT) + Constants.MARGING * (position+1)));
+								x,
+								y);
 						
-						images[i][j].setTimesToAnimate(j-positionToInjectNewBean);
+						images[i][j].setTimesToMoveDown(i-positionToInjectNewBean);
 						images[i][j].setIsFalling(true);
 						position ++;
 					}
@@ -533,25 +468,7 @@ public class MainBoard implements Runnable{
 			columnWillExplode = false;
 		}
     }
-    
-    public synchronized boolean isAnimationInProgress(){
-        boolean result = false;
 
-        for (int i = 0; i < imagesUnderAnimation.size(); i++) {
-            Bean current = imagesUnderAnimation.peek();
-            if(current != null && !current.isThreadActive()){
-               imagesUnderAnimation.pop();
-            }else {
-            	result = true;
-            }
-        }
-
-        if(imagesUnderAnimation.isEmpty()) {
-        	return false;
-        }
-        return result;
-    }
-    
     protected final boolean checkIfMouseInsideRankCoordinates(int x_m, int y_m, int x_j, int y_j){
          if(x_m > x_j && x_m < x_j + Constants.BEAN_WIDTH
              && y_m > y_j && y_m < y_j + Constants.BEAN_HEIGHT){
@@ -563,61 +480,89 @@ public class MainBoard implements Runnable{
 	@Override
 	public void run() {
 		int state = 0;
+		// While will be removed
 		while(state != -1) {
-			//System.out.println("Inside while");
 			switch(state) {
 			// Explode Images
 				case 0:
-					if (isAnimationInProgress()) {
-						//System.out.println("In progress");
-					}else {
-						//System.out.println("End Progress");
-						this.explode();
-						state = 1;
-					}
+					// Explode Beans
+					this.explode();
+					state = 1;
 				break;
-				// Remove exploded images
+				
 				case 1:
-					if (isAnimationInProgress()) {
-						//System.out.println("Wating to remove");
-					}else {
+					// Calculate how many positions a bean will be moved down
 						this.animateColumnForExplodedBeans();
 						state = 2;
-					}
 				break;
 				// Move all images down
 				case 2:
-					if (isAnimationInProgress()) {
-						//System.out.println("Wating to delete");
-					}else {
-						for (int i = 0; i < images.length; i++) {
-							for (int j = images[0].length - 1; j > -1; j--) {
-								if (images[i][j].getIsFalling()) {
-									images[i][j].setIsFalling(false);
-									//imagesUnderAnimation.add(images[i][j]);
-									images[i][j].startAnimation("downWhenExplosion", this.canvasReference, images[i][j].getTimesToAnimate());
-								}
+					
+					// Start animation to move bean down
+					for (int i = 0; i < images.length; i++) {
+						for (int j = images[0].length - 1; j > -1; j--) {
+							if (images[i][j].getIsFalling()) {
+								images[i][j].setIsFalling(false);
+								//imagesUnderAnimation.add(images[i][j]);
+								images[i][j].startAnimation("downWhenExplosion", this.canvasReference);
 							}
 						}
-						state = -1;
 					}
+					state = 3;
+
 					break;
-				// search algoritm
+
 				case 3:
-					if (isAnimationInProgress()) {
-						//System.out.println("explote");
-					}else {
-						for (int i = 0; i < images.length; i++) {
-							for (int j = images[0].length - 1; j > -1; j--) {
-								if (!images[i][j].getIsFalling()) {
-									if(this.searchAlgorithm(images, i, j)) {
-										new Thread(this).start();
-									}
-								}
-							}
+					// Search if the beans that where moved down found a match and need to be exploded
+			    	boolean incremetController = false;
+			    	int current_i = -1;
+			    	int current_j = 0;
+			    	while(current_i < images.length-1 || current_j < images[0].length-1) {
+			    		
+			    		incremetController = !incremetController;
+			    		if(incremetController) {
+			    			current_i++;
+			    		}else {
+			    			current_j++;
+			    		}
+			    		
+			    		for (int i = current_i, temp_j = current_j; i >= 0 && temp_j <=  images[0].length -1; i--, temp_j++) {
+			    			this.searchAlgorithm(images, i, temp_j);
+			    			
+			    			if(temp_j != i)
+			    				this.searchAlgorithm(images, temp_j, i);
 						}
-					}
+			    	}
+			    	
 					state = -1;
+					break;
+				case 4:
+					// No longer necesary
+			    	incremetController = false;
+			    	current_i = -1;
+			    	current_j = 0;
+			    	while(current_i < images.length-1 || current_j < images[0].length-1) {
+			    		
+			    		incremetController = !incremetController;
+			    		if(incremetController) {
+			    			current_i++;
+			    		}else {
+			    			current_j++;
+			    		}
+			    		
+			    		for (int i = current_i, temp_j = current_j; i >= 0 && temp_j <=  images[0].length -1; i--, temp_j++) {
+			    			images[i][temp_j].startAnimation("explosion", this.canvasReference);
+			    			
+			    			if(temp_j != i)
+			    			images[temp_j][i].startAnimation("explosion", this.canvasReference);
+						}
+			            try {
+			                TimeUnit.MILLISECONDS.sleep(200);
+			            } catch (InterruptedException ex) {
+			                Logger.getLogger(Bean.class.getName()).log(Level.SEVERE, null, ex);
+			            }
+			    	}
+			    	state = -1;
 					break;
 				default:
 					state = -1;
